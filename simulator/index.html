@@ -1,0 +1,277 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>EMI Saathi · AI voice agent POC</title>
+<style>
+  :root { --bg:#f4f6f8; --card:#fff; --ink:#18212b; --muted:#5f6b78; --line:#dde4ea; --brand:#0b5d55; --teal:#0f9d8f; --teal-l:#e3f3f1;
+    --blue:#2f6fb0; --blue-l:#e6eef7; --amber:#b7791f; --amber-l:#fdf1dd; --red:#c8443a; --red-l:#fbe4df; --violet:#6b5bd2; --violet-l:#ecebfb; --green:#25a35a; --wa:#e7f7ee; }
+  * { box-sizing:border-box; } body { margin:0; font-family: system-ui, -apple-system, "Segoe UI", "Noto Sans Devanagari", Roboto, sans-serif; background:var(--bg); color:var(--ink); font-size:14px; }
+  header { background:var(--brand); color:#fff; padding:10px 18px; display:flex; gap:16px; align-items:center; flex-wrap:wrap; }
+  header h1 { font-size:17px; margin:0 8px 0 0; } header label { font-size:13px; color:#d6efeb; display:flex; gap:6px; align-items:center; }
+  header .clock { font-weight:700; color:#fff; min-width:120px; } .pill { font-size:11.5px; padding:2px 8px; border-radius:10px; background:#ffffff22; }
+  main { display:grid; grid-template-columns: minmax(330px, 1.05fr) minmax(0, 1.4fr) minmax(300px, 0.95fr); gap:12px; padding:12px; } main > section { min-width:0; }
+  @media (max-width: 1250px) { main { grid-template-columns: 1fr; } }
+  .card { background:var(--card); border:1px solid var(--line); border-radius:12px; padding:12px 14px; margin-bottom:12px; }
+  .card h2 { font-size:12.5px; letter-spacing:.06em; text-transform:uppercase; color:var(--muted); margin:0 0 10px; display:flex; justify-content:space-between; align-items:center; }
+  button { font:inherit; border:1px solid var(--line); background:#fff; border-radius:8px; padding:5px 10px; cursor:pointer; } button:hover { border-color:#aebbc4; }
+  button.primary { background:var(--teal); border-color:var(--teal); color:#fff; } button.small { font-size:12px; padding:3px 8px; } button:disabled { opacity:.5; cursor:default; }
+  table { width:100%; border-collapse:collapse; font-size:12.5px; } th { text-align:left; color:var(--muted); font-weight:600; padding:4px; border-bottom:1px solid var(--line); }
+  td { padding:5px 4px; border-bottom:1px solid #eef2f5; vertical-align:top; } td small { color:var(--muted); display:block; }
+  .badge { display:inline-block; font-size:11px; font-weight:600; border-radius:6px; padding:1px 6px; white-space:nowrap; }
+  .b-bot { background:var(--teal-l); color:var(--brand); } .b-human { background:var(--violet-l); color:#4a3fa6; } .b-skip { background:#eef1f3; color:var(--muted); } .b-done { background:#e2f5e9; color:#17703c; }
+  .scen { width:100%; text-align:left; margin-bottom:5px; } .scen b { display:block; font-size:13px; } .scen span { color:var(--muted); font-size:11.5px; }
+  .pipe { display:grid; grid-template-columns: repeat(8, minmax(0,1fr)); gap:5px; margin-bottom:10px; }
+  .node { border:1px solid var(--line); border-radius:9px; padding:6px 2px; text-align:center; font-size:11px; color:var(--muted); transition: all .2s; min-width:0; overflow:hidden; }
+  .node b { display:block; color:var(--ink); font-size:12px; } .node.on { background:var(--teal-l); border-color:var(--teal); transform:translateY(-2px); }
+  .node.on.comp { background:var(--amber-l); border-color:var(--amber); } .node.on.hand { background:var(--red-l); border-color:var(--red); }
+  #callhead { display:flex; justify-content:space-between; gap:8px; flex-wrap:wrap; font-size:12.5px; color:var(--muted); margin-bottom:8px; } #callhead b { color:var(--ink); }
+  #chat { height:270px; overflow:auto; background:#fafcfc; border:1px solid var(--line); border-radius:10px; padding:10px; display:flex; flex-direction:column; gap:7px; }
+  .bub { max-width:86%; padding:7px 10px; border-radius:12px; line-height:1.45; } .bub small { display:block; color:var(--muted); font-size:11.5px; margin-top:3px; }
+  .bot { background:var(--teal-l); align-self:flex-start; border-bottom-left-radius:3px; } .you { background:var(--blue-l); align-self:flex-end; border-bottom-right-radius:3px; }
+  .sys { align-self:center; color:var(--muted); font-size:12px; text-align:center; background:none; }
+  .row { display:flex; gap:6px; align-items:center; flex-wrap:wrap; } #say { flex:1; min-width:0; padding:7px; border:1px solid var(--line); border-radius:8px; font:inherit; }
+  #log { height:300px; overflow:auto; display:flex; flex-direction:column; gap:5px; }
+  .ev { border-left:4px solid var(--line); padding:4px 8px; background:#fafcfc; } .ev .t { font-weight:600; font-size:12.5px; } .ev .x { color:var(--muted); font-size:11.5px; font-family: ui-monospace, Menlo, monospace; word-break:break-word; margin-top:2px; }
+  .ev .tag { font-size:10.5px; text-transform:uppercase; letter-spacing:.05em; color:var(--muted); margin-right:6px; }
+  .ev.compliance { border-color:var(--amber); background:#fffaf0; } .ev.understand, .ev.agent { border-color:var(--violet); } .ev.tool, .ev.crm { border-color:var(--blue); }
+  .ev.whatsapp { border-color:var(--green); background:#f3fbf6; } .ev.handoff { border-color:var(--red); background:#fff6f4; } .ev.result { border-color:var(--brand); background:#eef6f5; } .ev.dialer, .ev.telecom { border-color:#8a99a6; }
+  .phone { background:#ece5dd; border-radius:14px; padding:10px; min-height:150px; max-height:280px; overflow:auto; display:flex; flex-direction:column; gap:6px; }
+  .wa { background:#fff; border-radius:8px; padding:7px 9px; font-size:12.5px; line-height:1.4; box-shadow:0 1px 0 #0001; } .wa b { color:#075e54; font-size:11.5px; display:block; }
+  .wa button { margin-top:6px; background:var(--green); color:#fff; border:none; width:100%; }
+  .desk { border:1px solid var(--red); background:var(--red-l); border-radius:9px; padding:8px; margin-bottom:6px; font-size:12.5px; line-height:1.45; } .desk b { color:var(--red); }
+  .kpis { display:grid; grid-template-columns: repeat(3, 1fr); gap:6px; text-align:center; } .kpis div { border:1px solid var(--line); border-radius:8px; padding:6px 2px; background:#fafcfc; font-size:11.5px; color:var(--muted); }
+  .kpis b { display:block; font-size:17px; color:var(--ink); } .muted { color:var(--muted); font-size:12px; line-height:1.5; }
+  .roi label { display:flex; justify-content:space-between; font-size:12.5px; margin:4px 0; } .roi input { width:90px; font:inherit; padding:2px 4px; }
+  .note { background:var(--amber-l); border:1px solid #f0d49c; border-radius:8px; padding:7px; font-size:12px; margin-top:8px; }
+</style>
+</head>
+<body>
+<header>
+  <h1>EMI Saathi · AI voice agent for EMI reminders</h1>
+  <span class="pill">Sahayak Finance (fictional NBFC) · POC</span>
+  <label>Clock (IST) <input id="clock" type="range" min="6" max="22" step="0.5" value="11"> <span class="clock" id="clockv"></span></label>
+  <label><input id="speak" type="checkbox"> Speak replies</label>
+  <label><input id="llm" type="checkbox" disabled> LLM understanding <span id="llmv" class="pill">checking…</span></label>
+</header>
+<main>
+  <section>
+    <div class="card">
+      <h2>1 · Today's calling plan <span><button class="primary small" id="runAll">Run campaign</button> <button class="small" id="reset">Reset day</button></span></h2>
+      <table><thead><tr><th>Borrower</th><th>EMI / status</th><th>Decision</th><th></th></tr></thead><tbody id="plan"></tbody></table>
+      <p class="muted" style="margin:8px 0 0">The planner checks every rule before dialling: 8 am–7 pm window, daily caps, open disputes, promises, language and bucket. Move the clock to 7:30 pm and watch every call get blocked.</p>
+    </div>
+    <div class="card"><h2>2 · Real-life calls</h2><div id="scenarios"></div></div>
+  </section>
+
+  <section>
+    <div class="card">
+      <h2>3 · Live call <span id="lang" class="badge b-skip">—</span></h2>
+      <div class="pipe">
+        <div class="node" data-k="dialer"><b>Dialer</b>campaign</div><div class="node" data-k="telecom"><b>Telecom</b>1600 CLI</div>
+        <div class="node comp" data-k="compliance"><b>Rules</b>RBI · DPDP</div><div class="node" data-k="understand"><b>NLU</b>Hi / En</div>
+        <div class="node" data-k="agent"><b>Agent</b>decides</div><div class="node" data-k="tool"><b>Tools</b>UPI · LMS</div>
+        <div class="node" data-k="whatsapp"><b>WhatsApp</b>link · receipt</div><div class="node hand" data-k="handoff"><b>Human</b>specialist</div>
+      </div>
+      <div id="callhead"><span>No active call. Pick a borrower or a real-life call.</span></div>
+      <div id="chat"></div>
+      <div class="row" style="margin-top:8px">
+        <input id="say" placeholder="Type as the borrower (Hindi, Hinglish or English), then Enter" autocomplete="off">
+        <button id="mic" title="Speak (Chrome/Edge via npm start)">🎤</button>
+      </div>
+      <div class="row" style="margin-top:6px"><button class="small" id="silence">Stay silent</button><button class="small" id="hang">Hang up</button>
+        <span class="muted">Try: "हाँ बोल रहा हूँ" · "4321" · "salary aane pe kar dunga" · "maine pay kar diya" · "meri naukri chali gayi"</span></div>
+    </div>
+    <div class="card"><h2>What's happening</h2><div id="log"></div></div>
+  </section>
+
+  <section>
+    <div class="card"><h2>Borrower's WhatsApp</h2><div class="phone" id="wa"><div class="muted" style="text-align:center">Messages to the borrower appear here.</div></div></div>
+    <div class="card"><h2>Agent desk (escalations)</h2><div id="desk" class="muted">No escalations yet. Hardship, disputes, bereavement and requests for a person land here with a summary.</div></div>
+    <div class="card"><h2>Today's numbers</h2>
+      <div class="kpis"><div><b id="kAtt">0</b>dial attempts</div><div><b id="kConn">0%</b>connect rate</div><div><b id="kRpc">0</b>right-party</div>
+        <div><b id="kPtp">0</b>promises (₹<span id="kPtpAmt">0</span>)</div><div><b id="kPaid">0</b>paid on call (₹<span id="kPaidAmt">0</span>)</div><div><b id="kEsc">0</b>to humans</div></div>
+      <p class="muted" style="margin:8px 0 0" id="kComp">Compliance blocks today: 0</p>
+    </div>
+    <div class="card roi"><h2>Business case (monthly)</h2>
+      <label>Accounts reminded <input id="rAcc" type="number" value="100000"></label>
+      <label>Human cost per call (₹) <input id="rAgent" type="number" value="50"></label>
+      <label>Bot cost per call (₹) <input id="rBot" type="number" value="8"></label>
+      <label>Share of calls the bot handles (%) <input id="rShare" type="number" value="70"></label>
+      <p id="roiOut" class="muted"></p>
+      <p class="muted" style="font-size:11px">Defaults are illustrative industry figures (₹40–60 per human call, ₹4–25 per AI call). Use your own numbers.</p>
+    </div>
+  </section>
+</main>
+<script src="../src/data.js"></script><script src="../src/nlu.js"></script><script src="../src/compliance.js"></script>
+<script src="../src/agent.js"></script><script src="../src/campaign.js"></script><script src="../src/scenarios.js"></script><script src="../src/llm.js"></script>
+<script>
+(function () {
+  const { data: D, agent: A, campaign: CA, scenarios: SC, llm: LLM } = window.EMI;
+  const $ = (id) => document.getElementById(id);
+  const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+  const TAG = { dialer: 'dialer', telecom: 'telecom', compliance: 'compliance', understand: 'understanding', agent: 'agent', tool: 'tool', whatsapp: 'whatsapp', crm: 'CRM / LMS', handoff: 'hand-over', result: 'result', say: 'saathi says' };
+  const NODE = { dialer: 'dialer', telecom: 'telecom', compliance: 'compliance', understand: 'understand', agent: 'agent', say: 'agent', tool: 'tool', crm: 'tool', whatsapp: 'whatsapp', handoff: 'handoff' };
+  let crm = {}, records = [], compBlocks = 0, session = null, queue = [], busy = false, auto = false, payClicked = false, llmOn = false;
+  const today = D.ist(Date.now());
+  const nowMs = () => { const h = Number($('clock').value); return D.istMs(today.y, today.m, today.d, Math.floor(h), (h % 1) * 60); };
+  const showClock = () => { const p = D.ist(nowMs()); $('clockv').textContent = `${D.fmtDate(nowMs(), 'en')} · ${D.fmtTime(p.h, p.min)}`; };
+
+  // ---------- event animation ----------
+  function enqueue(e) { queue.push(e); pump(); }
+  function pump() {
+    if (busy || !queue.length) return; busy = true; const e = queue.shift(); render(e);
+    const done = () => { busy = false; if (!queue.length) document.dispatchEvent(new Event('drained')); pump(); };
+    if (e.layer === 'say' && $('speak').checked && 'speechSynthesis' in window) {
+      const u = new SpeechSynthesisUtterance(e.title); u.lang = session && session.lang === 'hi' ? 'hi-IN' : 'en-IN';
+      const v = speechSynthesis.getVoices().find((x) => x.lang === u.lang) || speechSynthesis.getVoices().find((x) => x.lang.startsWith(u.lang.slice(0, 2)));
+      if (v) u.voice = v; u.rate = 1.02; u.onend = done; u.onerror = done; speechSynthesis.speak(u);
+    } else setTimeout(done, e.layer === 'say' ? (auto ? 450 : 650) : (auto ? 150 : 300));
+  }
+  function render(e) {
+    document.querySelectorAll('.node').forEach((n) => n.classList.toggle('on', n.dataset.k === NODE[e.layer]));
+    if (e.layer === 'compliance' && /Blocked|Outside/.test(e.title)) compBlocks++;
+    const d = document.createElement('div'); d.className = 'ev ' + e.layer;
+    d.innerHTML = `<div class="t"><span class="tag">${TAG[e.layer] || e.layer}</span>${esc(e.title)}</div>` + (e.tech ? `<div class="x">${esc(e.tech)}</div>` : '');
+    $('log').appendChild(d); $('log').scrollTop = 1e9;
+    if (e.layer === 'say') bubble('bot', e.title, e.tech);
+    if (e.layer === 'whatsapp') waMsg((session ? A.borrowerOf(session).name.split(' ')[0] + ' · ' : '') + e.title.replace('WhatsApp to borrower: ', ''), e.tech);
+    if (e.layer === 'result') afterCall();
+  }
+  function bubble(cls, text, sub) { const b = document.createElement('div'); b.className = 'bub ' + cls; b.innerHTML = esc(text) + (sub ? `<small>${esc(sub)}</small>` : ''); $('chat').appendChild(b); $('chat').scrollTop = 1e9; }
+  function waMsg(kind, text) {
+    if ($('wa').firstElementChild && $('wa').firstElementChild.classList.contains('muted')) $('wa').innerHTML = '';
+    const m = document.createElement('div'); m.className = 'wa';
+    m.innerHTML = `<b>${esc(kind)}</b>${esc(text)}` + (/UPI payment link/.test(kind) ? '<button class="small">Pay with UPI</button>' : '');
+    const btn = m.querySelector('button'); if (btn) btn.onclick = () => { payClicked = true; btn.textContent = 'Paid ✓ (now tell Saathi "ho gaya")'; btn.disabled = true; };
+    $('wa').appendChild(m); $('wa').scrollTop = 1e9;
+  }
+
+  // ---------- calls ----------
+  function ctx() {
+    return { nowMs: nowMs(), onEvent: enqueue, paymentGateway: () => (payClicked || auto ? { received: true, utr: '5' + String(Date.now()).slice(-11) } : { received: false }),
+      understand: llmOn ? LLM.remoteUnderstand('/api/understand') : undefined };
+  }
+  function startCall(b, network) {
+    $('chat').innerHTML = ''; $('log').innerHTML = ''; payClicked = false; queue = [];
+    session = A.createSession(b, { nowMs: nowMs() });
+    const st = D.loanStatus(b, nowMs());
+    $('callhead').innerHTML = `<span><b>${esc(b.name)}</b> · ${esc(b.city)} · ${esc(b.product)}</span><span>${b.phone.slice(0, 3)} ••••• •${b.phone.slice(-4)} · ${st.bucket}${st.dpd ? ' · DPD ' + st.dpd : ''}</span>`;
+    $('lang').textContent = session.lang === 'hi' ? 'Hindi' : 'English';
+    enqueue({ layer: 'dialer', title: `Dialling ${b.name} (${st.bucket}) from ${D.LENDER.callerId}`, tech: 'Outbound campaign · answering-machine detection on' });
+    enqueue({ layer: 'telecom', title: network === 'answered' ? 'Call answered by a person' : `Network result: ${network.replace('_', ' ')}`, tech: network === 'answered' ? 'SIP INVITE via licensed TSP trunk → 180 Ringing → 200 OK' : network === 'busy' ? 'SIP INVITE → 486 Busy Here' : network === 'no_answer' ? 'SIP INVITE → 180 Ringing → no answer (timeout)' : 'SIP INVITE → not reachable' });
+    if (network !== 'answered') { const r = { network }; records.push(r); CA.applyResult(crm, b, r, nowMs()); session = null; setTimeout(() => { drawPlan(); drawKpis(); }, 300); return false; }
+    A.start(session, ctx()); return true;
+  }
+  async function send(input) {
+    if (!session || session.ended) { bubble('sys', 'Start a call first (click "Call" next to a borrower).'); return; }
+    if (input.text) bubble('you', input.text); if (input.silence) bubble('you', '[silence]'); if (input.hangup) bubble('sys', 'Borrower hung up');
+    await A.turn(session, input, ctx());
+    $('lang').textContent = session.lang === 'hi' ? 'Hindi' : 'English';
+  }
+  function afterCall() {
+    if (!session || !session.outcome || session._counted) return; session._counted = true;
+    const b = A.borrowerOf(session); const r = { network: 'answered', outcome: session.outcome, linkSent: !!session.link };
+    records.push(r); CA.applyResult(crm, b, r, nowMs());
+    if (session.outcome.queue) deskCard(session.outcome);
+    drawPlan(); drawKpis();
+  }
+  function deskCard(o) {
+    if ($('desk').classList.contains('muted')) { $('desk').classList.remove('muted'); $('desk').innerHTML = ''; }
+    const d = document.createElement('div'); d.className = 'desk';
+    d.innerHTML = `<b>→ ${esc(o.queue)}</b> · ${o.planned ? 'by design' : 'bot needed help'} · ${esc(o.disposition)}<br>${esc(o.summary)}`;
+    $('desk').prepend(d);
+  }
+
+  // ---------- plan + campaign ----------
+  function statusText(id) {
+    const s = crm[id]; if (!s) return '';
+    const map = { PAID: 'Paid ✓', ALREADY_PAID_VERIFIED: 'Already paid ✓', PTP: 'Promise ' + (s.ptpDateMs ? D.fmtDate(s.ptpDateMs, 'en') : ''), CALLBACK: 'Callback ' + (s.callbackAtMs ? D.fmtTime(D.ist(s.callbackAtMs).h, D.ist(s.callbackAtMs).min) : ''),
+      THIRD_PARTY_CALLBACK: 'Callback (3rd party)', HARDSHIP: 'Hardship → specialist', DISPUTE: 'Dispute open', DECEASED: 'Deceased (sensitive)', WRONG_NUMBER: 'Wrong number', NOT_VERIFIED: 'Not verified',
+      AGENT: 'With an agent', PAYMENT_CLAIM: 'Claim on hold 48 h', no_answer: 'No answer', busy: 'Busy', switched_off: 'Switched off', voicemail: 'Voicemail' };
+    return map[s.lastResult] || s.lastResult || '';
+  }
+  function drawPlan() {
+    const rows = CA.plan(nowMs(), crm);
+    $('plan').innerHTML = rows.map((r) => {
+      const b = r.b, st = r.st, d = r.decision, status = statusText(b.id);
+      const cls = d.ok ? 'b-bot' : d.route === 'human' ? 'b-human' : (crm[b.id] && crm[b.id].flags && crm[b.id].flags.paid) ? 'b-done' : 'b-skip';
+      const label = d.ok ? 'Call now' : d.route === 'human' ? 'Human team' : 'Skip';
+      return `<tr><td><b>${esc(b.name)}</b><small>${esc(b.city)} · ${b.lang === 'hi' ? 'Hindi' : b.lang === 'en' ? 'English' : 'Tamil'}</small></td>
+        <td>${D.rupees(b.emi)}<small>${st.bucket === 'pre-due' ? 'due in ' + b.dueOffsetDays + ' d' : st.bucket === 'due-today' ? 'due today' : 'DPD ' + st.dpd}${status ? ' · <b>' + esc(status) + '</b>' : ''}</small></td>
+        <td><span class="badge ${cls}" title="${esc(d.reason)}">${label}</span><small>${esc(d.reason)}</small></td>
+        <td>${d.ok ? `<button class="small" data-call="${b.id}">Call</button>` : ''}</td></tr>`;
+    }).join('');
+  }
+  $('plan').onclick = (e) => { const id = e.target.dataset && e.target.dataset.call; if (id) { auto = false; startCall(D.BORROWERS.find((b) => b.id === id), 'answered'); $('say').focus(); } };
+  const waitDrained = () => new Promise((ok) => { if (!busy && !queue.length) return ok(); document.addEventListener('drained', function h() { document.removeEventListener('drained', h); ok(); }); });
+  const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+  async function playScenario(sc, fast) {
+    auto = !!fast; const b = D.BORROWERS.find((x) => x.id === sc.borrowerId);
+    if (!fast) { const ok = startCall(b, 'answered'); if (!ok) return; bubble('sys', sc.story); }
+    await waitDrained();
+    for (const st of sc.steps) {
+      if (!session || session.ended) break;
+      await sleep(fast ? 250 : 900);
+      if (/हो गया|ho gaya|done/i.test(st)) payClicked = true;
+      await send({ text: st }); await waitDrained();
+    }
+    auto = false;
+  }
+  const NETWORK = { B12: ['no_answer', 'answered'], B02: ['busy', 'answered'] };
+  $('runAll').onclick = async () => {
+    $('runAll').disabled = true; auto = true;
+    for (let guard = 0; guard < 20; guard++) {
+      const next = CA.plan(nowMs(), crm).find((r) => r.decision.ok); if (!next) break;
+      const b = next.b; const seq = NETWORK[b.id]; const tries = (crm[b.id] && crm[b.id].attemptsToday) || 0;
+      const network = seq ? (seq[tries] || 'answered') : 'answered';
+      const answered = startCall(b, network); await waitDrained();
+      if (answered) { const sc = SC.find((x) => x.borrowerId === b.id) || SC[0]; await playScenario(sc, true); await waitDrained(); }
+      await sleep(250);
+    }
+    auto = false; $('runAll').disabled = false; drawPlan(); drawKpis();
+  };
+  $('reset').onclick = () => { crm = {}; records = []; compBlocks = 0; session = null; $('chat').innerHTML = ''; $('log').innerHTML = ''; $('wa').innerHTML = '<div class="muted" style="text-align:center">Messages to the borrower appear here.</div>';
+    $('desk').className = 'muted'; $('desk').textContent = 'No escalations yet.'; drawPlan(); drawKpis(); };
+
+  function drawKpis() {
+    const k = CA.kpis(records);
+    $('kAtt').textContent = k.attempts; $('kConn').textContent = k.connectRate + '%'; $('kRpc').textContent = k.rpc;
+    $('kPtp').textContent = k.ptp; $('kPtpAmt').textContent = k.ptpAmount.toLocaleString('en-IN'); $('kPaid').textContent = k.paid; $('kPaidAmt').textContent = k.paidAmount.toLocaleString('en-IN');
+    $('kEsc').textContent = Object.values(k.escalations).reduce((a, b) => a + b, 0);
+    $('kComp').textContent = `Compliance events today: ${compBlocks} blocked or rerouted actions · Planner skipped ${CA.plan(nowMs(), crm).filter((r) => !r.decision.ok).length} borrowers right now`;
+  }
+  function drawRoi() {
+    const r = CA.roi({ accounts: +$('rAcc').value, agentCostPerCall: +$('rAgent').value, botCostPerCall: +$('rBot').value, botShare: +$('rShare').value });
+    $('roiOut').innerHTML = `${r.calls.toLocaleString('en-IN')} calls/month (2 per account) · bot handles ${Math.round(r.botCalls).toLocaleString('en-IN')}<br><b style="color:#0b5d55;font-size:15px">Saving ≈ ₹${Math.round(r.saving).toLocaleString('en-IN')} / month</b><br>≈ ${r.agentsFreed} tele-caller seats freed for complex cases`;
+  }
+  ['rAcc', 'rAgent', 'rBot', 'rShare'].forEach((id) => { $(id).oninput = drawRoi; });
+
+  // ---------- scenarios + manual input ----------
+  $('scenarios').innerHTML = SC.map((s, i) => `<button class="scen" data-i="${i}"><b>${i + 1}. ${esc(s.title)}</b><span>${esc(s.lang)} · ${esc(s.story)}</span></button>`).join('');
+  $('scenarios').onclick = (e) => { const b = e.target.closest('.scen'); if (b) playScenario(SC[+b.dataset.i], false); };
+  $('say').onkeydown = (e) => { if (e.key === 'Enter' && $('say').value.trim()) { const t = $('say').value.trim(); $('say').value = ''; send({ text: t }); } };
+  $('silence').onclick = () => send({ silence: true }); $('hang').onclick = () => send({ hangup: true });
+  $('clock').oninput = () => { showClock(); drawPlan(); drawKpis(); };
+
+  const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+  $('mic').onclick = () => {
+    if (!SR) { bubble('sys', 'Voice input needs Chrome or Edge, opened via "npm start" (http://localhost:3100).'); return; }
+    const rec = new SR(); rec.lang = session && session.lang === 'en' ? 'en-IN' : 'hi-IN'; rec.interimResults = false;
+    rec.onresult = (e) => send({ text: e.results[0][0].transcript }); rec.onerror = (e) => bubble('sys', 'Mic: ' + e.error);
+    $('mic').textContent = '…'; rec.onend = () => { $('mic').textContent = '🎤'; }; rec.start();
+  };
+
+  // LLM availability (only when served by server.js)
+  fetch('/api/health').then((r) => r.json()).then((h) => { $('llm').disabled = !h.llm; $('llmv').textContent = h.llm ? h.model : 'off: set ANTHROPIC_API_KEY'; })
+    .catch(() => { $('llmv').textContent = 'off (open via npm start)'; });
+  $('llm').onchange = () => { llmOn = $('llm').checked; };
+  if ('speechSynthesis' in window) speechSynthesis.getVoices();
+
+  showClock(); drawPlan(); drawKpis(); drawRoi();
+  bubble('sys', 'Click "Run campaign" to watch Saathi work through today\'s list, or pick a real-life call. You can also call a borrower and reply yourself.');
+})();
+</script>
+</body>
+</html>
